@@ -2,7 +2,9 @@
 
 import * as d3 from "d3"
 
+
 function setSelState (
+   { point_attrs },
    {
       selState,
       selClasses,
@@ -10,14 +12,16 @@ function setSelState (
       join
    },
    rootElement,
-   { points },
+   chart,
    listener
 ) {
+   const { points } = chart
    rootElement.selectAll('.scatterplot-point').each(function (point) {
       const sel = join(selState(points[point.i].x))(selState(points[point.i].y))
       d3.select(this) // won't work inside arrow function :/
          .classed(selClasses, false)
          .classed(selClassesFor(sel), true)
+         .attrs(point_attrs(chart)(point))
          .on('mousedown', e => { listener(e) })
          .on('mouseenter', e => { listener(e) })
          .on('mouseleave', e => { listener(e) })
@@ -25,8 +29,9 @@ function setSelState (
 }
 
 function drawScatterPlot_ (
+   scatterPlotHelpers,
+   uiHelpers,
    {
-      uiHelpers,
       divId,
       suffix,
       view: {
@@ -41,8 +46,8 @@ function drawScatterPlot_ (
    return () => {
       const { val } = uiHelpers
       const childId = divId + '-' + suffix
-      var max_width = 360
-      var max_height = 360
+      var max_width = 280
+      var max_height = 200
       const x_max = Math.ceil(Math.max(...points.map(point => val(point.x))))
       const x_min = Math.ceil(Math.min(...points.map(point => val(point.x))))
       const y_max = Math.ceil(Math.max(...points.map(point => val(point.y))))
@@ -74,7 +79,7 @@ function drawScatterPlot_ (
             .range([0, width])
          rootElement.append('g')
             .attr('transform', "translate(0," + height + ")")
-            .call(d3.axisBottom(x))
+            .call(d3.axisBottom(x).tickSizeOuter(0))
             .selectAll('text')
             .style('text-anchor', 'middle')
 
@@ -82,20 +87,20 @@ function drawScatterPlot_ (
             .domain([Math.min(0, y_min), y_max])
             .range([height, 0])
          rootElement.append('g')
-            .call(d3.axisLeft(y))
+            .call(d3.axisLeft(y).tickSizeOuter(0))
 
          rootElement.append("text")
             .attr("x", width)
             .attr("y", height + 25)
             .style("text-anchor", "end")
-            .style("font-size", "8px")
+            .style("font-size", "10px")
             .text(val(xlabel))
          rootElement.append("text")
             .attr("transform", "rotate(-90)")
             .attr("x", -margin.top)
             .attr("y", -margin.left + 20)
             .style("text-anchor", "end")
-            .style("font-size", "8px")
+            .style("font-size", "10px")
             .text(val(ylabel))
 
          rootElement.append('g')
@@ -106,7 +111,6 @@ function drawScatterPlot_ (
             .classed('scatterplot-point', true)
             .attr('cx', ({ point }) => x(val(point.x)))
             .attr('cy', ({ point }) => y(val(point.y)))
-            .attr('data-y', ({ point }) => val(point.y))
             .attr('stroke-width', 0.5)
 
          rootElement.append('text')
@@ -118,8 +122,8 @@ function drawScatterPlot_ (
             .attr('text-anchor', 'middle')
       }
 
-      setSelState(uiHelpers, rootElement, { points }, listener)
+      setSelState(scatterPlotHelpers, uiHelpers, rootElement, { points }, listener)
    }
 }
 
-export var drawScatterPlot = x1 => x2 => drawScatterPlot_(x1, x2)
+export var drawScatterPlot = x1 => x2 => x3 => x4 => drawScatterPlot_(x1, x2, x3, x4)

@@ -2,13 +2,14 @@ module App where
 
 import Prelude hiding (absurd)
 
-import App.Fig (FigSpec, drawFig, drawFile, loadFig)
+import App.Fig (drawFig, drawFile, loadFig)
 import App.Util (runAffs_)
+import App.View.Util (FigSpec)
 import Data.Tuple (uncurry)
 import Effect (Effect)
 import Module (File(..), Folder(..), loadFile')
-import Test.Specs.LinkedOutputs (linkedOutputs_spec1)
 import Test.Specs.LinkedInputs (energyScatter)
+import Test.Specs.LinkedOutputs (linkedOutputs_spec1)
 import Util ((×))
 
 fig2 :: FigSpec
@@ -20,7 +21,7 @@ fig2 =
         , "example/slicing/convolution/filter/emboss"
         ]
    , datasets: []
-   , inputs: [ "input_image", "filter" ]
+   , inputs: [ "inputImage", "filter" ]
    }
 
 fig3 :: FigSpec
@@ -32,14 +33,14 @@ fig3 =
         , "example/slicing/convolution/filter/emboss"
         ]
    , datasets: []
-   , inputs: [ "input_image" ]
+   , inputs: [ "inputImage" ]
    }
 
 main :: Effect Unit
 main = do
    runAffs_ drawFile
-      [ loadFile' (Folder "fluid/example/linked-outputs") (File "bar-chart-line-chart")
-      , loadFile' (Folder "fluid/example/linked-outputs") (File "renewables")
+      [ loadFile' (Folder "fluid/example/slicing/linked-outputs") (File "bar-chart-line-chart")
+      , loadFile' (Folder "fluid/dataset") (File "renewables")
       , loadFile' (Folder "fluid/lib") (File "convolution")
       , loadFile' (Folder "fluid/example/slicing/convolution") (File "emboss-wrap")
       ]

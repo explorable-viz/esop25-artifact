@@ -15,6 +15,7 @@ import Data.Newtype (class Newtype)
 import Data.Profunctor.Strong (second)
 import Desugarable (desug)
 import Effect.Aff.Class (class MonadAff, liftAff)
+import Effect.Class.Console (log)
 import Effect.Exception (Error)
 import Effect.Exception (error) as E
 import EvalGraph (GraphConfig, eval_progCxt)
@@ -47,8 +48,11 @@ loadFile (Folder folder) (File file) = do
    let url = "/" <> folder <> "/" <> file <> ".fld"
    result <- liftAff $ request (defaultRequest { url = url, method = Left GET, responseFormat = string })
    case result of
-      Left err -> throwError $ E.error $ printError err
-      Right response -> pure response.body
+      Left err -> do
+         log ("Failed with " <> printError err)
+         throwError $ E.error $ printError err
+      Right response ->
+         pure response.body
 
 loadFile' :: forall m. Folder -> File -> AffError m (File × String)
 loadFile' folder file = (file × _) <$> loadFile folder file
@@ -72,7 +76,7 @@ module_ file (ProgCxt r@{ mods }) = do
 datasetAs :: forall m. MonadAff m => MonadError Error m => Bind File -> Raw ProgCxt -> m (Raw ProgCxt)
 datasetAs (x ↦ file) (ProgCxt r@{ datasets }) = do
    eα <- parseProgram (Folder "fluid") file >>= desug
-   pure $ ProgCxt r { datasets = x ↦ eα : datasets }
+   pure $ ProgCxt r { datasets = (x ↦ eα) : datasets }
 
 loadProgCxt :: forall m. MonadAff m => MonadError Error m => Array String -> Array (Bind String) -> m (Raw ProgCxt)
 loadProgCxt mods datasets =

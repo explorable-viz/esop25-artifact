@@ -1,4 +1,4 @@
-MultiPlot {|
+MultiView {|
    "stacked-bar-chart" :=
       let totalFor year country rows =
          let [ row ] = [ row | row <- rows, row.year == year, row.country == country ]
@@ -7,8 +7,9 @@ MultiPlot {|
                      | country <- ["BRA", "EGY", "IND", "JPN"] ]
       in BarChart {
          caption: "Non-renewables by country",
-         data: [ { x: numToStr year, bars: stack year }
-               | year <- [2014..2018] ]
+         size: { width: 275, height: 185 },
+         stackedBars: [ { x: numToStr year, bars: stack year }
+                      | year <- [2014..2018] ]
       },
    "scatter-plot" :=
       let isCountry name x = name == x.country;
@@ -31,7 +32,7 @@ MultiPlot {|
 
       in ScatterPlot {
          caption: "Clean energy efficiency vs proportion of renewable energy capacity",
-         data: plot 2018 [ "BRA", "CHN", "DEU", "FRA", "EGY", "IND", "JPN", "MEX", "NGA", "USA" ],
+         points: plot 2018 [ "BRA", "CHN", "DEU", "FRA", "EGY", "IND", "JPN", "MEX", "NGA", "USA" ],
          xlabel: "Renewables/TotalEnergyCap",
          ylabel: "Clean Capacity Factor"
       }

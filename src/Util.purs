@@ -7,13 +7,18 @@ import Control.Monad.Error.Class (class MonadError, class MonadThrow, catchError
 import Control.Monad.Except (Except, ExceptT, runExcept)
 import Control.MonadPlus (class Alternative, guard)
 import Data.Array ((!!), updateAt)
+import Data.Array as A
+import Data.Array.NonEmpty (NonEmptyArray, fromArray)
+import Data.Array.NonEmpty as NEA
 import Data.Either (Either(..))
 import Data.Foldable (class Foldable, foldr)
 import Data.Functor.Compose (Compose)
 import Data.Functor.Product (Product)
 import Data.Identity (Identity(..))
 import Data.List (List, intercalate)
+import Data.List as L
 import Data.List.NonEmpty (NonEmptyList(..), fromList)
+import Data.List.NonEmpty as NEL
 import Data.Map (Map)
 import Data.Map as M
 import Data.Maybe (Maybe(..))
@@ -28,9 +33,12 @@ import Data.Tuple (Tuple(..), fst, snd)
 import Debug as Debug
 import Effect.Aff.Class (class MonadAff)
 import Effect.Class (class MonadEffect)
+import Effect.Class.Console (log)
 import Effect.Exception (Error, message)
 import Effect.Exception (error) as E
 import Effect.Unsafe (unsafePerformEffect)
+import Foreign.Object (Object)
+import Foreign.Object as Object
 
 debug
    :: { logging :: Boolean -- logging via "log"; requires an effect context
@@ -115,6 +123,9 @@ trace = traceWhen true
 traceWhen :: forall m. Applicative m => Boolean -> String -> m Unit
 traceWhen true msg | debug.tracing == true = Debug.trace msg \_ -> pure unit
 traceWhen _ _ = pure unit
+
+log' :: forall m. MonadEffect m => String -> m Unit
+log' msg = when debug.logging (log msg)
 
 absurd :: String
 absurd = "absurd"
@@ -202,6 +213,8 @@ infixr 1 bind2Flipped as =<<<
 -- like Endo in prelude but specialised to functions, to avoid newtype clutter
 type Endo a = a -> a
 
+type Setter b a = Endo a -> Endo b
+
 -- version of this in Data.Array uses unsafePartial
 unsafeIndex :: forall a. Array a -> Int -> a
 unsafeIndex xs i = definitely "index within bounds" (xs !! i)
@@ -210,9 +223,6 @@ unsafeUpdateAt :: forall a. Int -> a -> Endo (Array a)
 unsafeUpdateAt i x = updateAt i x >>> definitely "index within bounds"
 
 infixl 8 unsafeIndex as !
-
-nonEmpty :: forall a. List a -> NonEmptyList a
-nonEmpty = definitely' <<< fromList
 
 -- Similar to NonEmptyList.appendFoldable but without copying the list
 appendList :: forall a. NonEmptyList a -> List a -> NonEmptyList a
@@ -278,3 +288,49 @@ instance Singleton Set where
 
 instance Singleton NonEmptySet where
    singleton = NonEmptySet.singleton
+
+class NonEmpty (f :: Type -> Type) (g :: Type -> Type) | f -> g where
+   nonEmpty :: forall a. f a -> g a
+   init :: forall a. g a -> f a
+   tail :: forall a. g a -> f a
+
+instance NonEmpty List NonEmptyList where
+   nonEmpty = definitely "non-empty" <<< fromList
+   init = NEL.init
+   tail = NEL.tail
+
+instance NonEmpty Array NonEmptyArray where
+   nonEmpty = definitely "non-empty" <<< fromArray
+   init = NEA.init
+   tail = NEA.tail
+
+class IsEmpty a where
+   isEmpty :: a -> Boolean
+
+instance IsEmpty (Set a) where
+   isEmpty = Set.isEmpty
+
+instance IsEmpty (Object a) where
+   isEmpty = Object.isEmpty
+
+-- Foldable.length returns an arbitrary semiring which is a bit too general
+class Length (f :: Type -> Type) where
+   length :: forall a. f a -> Int
+
+instance Length List where
+   length = L.length
+
+instance Length Array where
+   length = A.length
+
+class Zip (f :: Type -> Type) where
+   zip :: forall a b. f a -> f b -> f (a × b)
+   zipWith :: forall a b c. (a -> b -> c) -> f a -> f b -> f c
+
+instance Zip Array where
+   zip = A.zip
+   zipWith = A.zipWith
+
+instance Zip List where
+   zip = L.zip
+   zipWith = L.zipWith

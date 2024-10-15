@@ -2,7 +2,7 @@ module Test.Specs.LinkedOutputs where
 
 import Prelude
 
-import App.Util.Selector (barChart, barSegment, field, fst, lineChart, linePoint, listElement, matrixElement, multiPlotEntry, scatterPlot, scatterPoint, snd)
+import App.Util.Selector (barChart, barSegment, field, fst, lineChart, linePoint, listElement, matrixElement, multiViewEntry, scatterPlot, scatterPoint, snd)
 import Bind ((↦))
 import DataType (f_plots, f_y)
 import Lattice (neg)
@@ -12,21 +12,22 @@ import Test.Util.Suite (TestLinkedOutputsSpec)
 linkedOutputs_spec1 :: TestLinkedOutputsSpec
 linkedOutputs_spec1 =
    { spec:
-        { datasets: [ "renewables" ↦ "example/linked-outputs/renewables" ]
+        { datasets: [ "renewables" ↦ "dataset/renewables" ]
         , imports: []
-        , file: File "linked-outputs/bar-chart-line-chart"
+        , file: File "slicing/linked-outputs/bar-chart-line-chart"
         , inputs: [ "renewables" ]
         }
-   , δ_out: multiPlotEntry "bar-chart" (barChart (barSegment 1 0 neg))
+   , δ_out: multiViewEntry "bar-chart" (barChart (barSegment 1 0 neg))
    , out_expect:
-        multiPlotEntry "bar-chart" (barChart (barSegment 1 0 neg))
-           >>> multiPlotEntry "line-chart"
+        multiViewEntry "bar-chart" (barChart (barSegment 1 0 neg))
+           >>> multiViewEntry "line-chart"
               ( lineChart
                    ( field f_plots
                         ( listElement 0 (linePoint 2 (field f_y neg))
                              >>> listElement 1 (linePoint 2 (field f_y neg))
                              >>> listElement 2 (linePoint 2 (field f_y neg))
                              >>> listElement 3 (linePoint 2 (field f_y neg))
+
                         )
                    )
               )
@@ -36,22 +37,34 @@ linkedOutputs_spec2 :: TestLinkedOutputsSpec
 linkedOutputs_spec2 =
    { spec:
         { datasets:
-             [ "renewables" ↦ "example/linked-inputs/renewables"
-             , "nonRenewables" ↦ "example/linked-inputs/non-renewables"
+             [ "renewables" ↦ "dataset/renewables-new"
+             , "nonRenewables" ↦ "dataset/non-renewables"
              ]
         , imports: []
-        , file: File "linked-outputs/stacked-bar-chart-scatter-plot"
+        , file: File "slicing/linked-outputs/stacked-bar-scatter-plot"
         , inputs: [ "nonRenewables" ]
         }
-   , δ_out: multiPlotEntry "stacked-bar-chart" (barChart (barSegment 3 2 neg >>> barSegment 4 1 neg >>> barSegment 4 3 neg))
+   , δ_out: multiViewEntry "stacked-bar-chart" (barChart (barSegment 3 2 neg >>> barSegment 4 1 neg >>> barSegment 4 3 neg))
    , out_expect:
-        multiPlotEntry "stacked-bar-chart" (barChart (barSegment 3 2 neg >>> barSegment 4 1 neg >>> barSegment 4 3 neg))
-           >>> multiPlotEntry "scatter-plot"
+        multiViewEntry "stacked-bar-chart" (barChart (barSegment 3 2 neg >>> barSegment 4 1 neg >>> barSegment 4 3 neg))
+           >>> multiViewEntry "scatter-plot"
               ( scatterPlot
                    ( scatterPoint 4 (field f_y neg)
                         >>> scatterPoint 6 (field f_y neg)
                    )
               )
+   }
+
+movingAverages_spec :: TestLinkedOutputsSpec
+movingAverages_spec =
+   { spec:
+        { datasets: [ "methane" ↦ "dataset/methane-emissions" ]
+        , imports: []
+        , file: File "linked-outputs/moving-average"
+        , inputs: [ "methane" ]
+        }
+   , δ_out: identity -- TODO: make this a non-trivial test
+   , out_expect: identity
    }
 
 linkedOutputs_cases :: Array TestLinkedOutputsSpec
@@ -62,9 +75,8 @@ linkedOutputs_cases =
           , file: File "linked-outputs/pairs"
           , inputs: [ "data" ]
           }
-     , δ_out: snd (snd (fst neg))
-     , out_expect: snd (snd (fst neg))
-          >>> fst (fst neg >>> snd (fst neg))
+     , δ_out: snd neg
+     , out_expect: neg
      }
    , { spec:
           { datasets: [ "data" ↦ "example/linked-outputs/convolution-data" ]
@@ -95,4 +107,5 @@ linkedOutputs_cases =
      }
    , linkedOutputs_spec1
    , linkedOutputs_spec2
+   , movingAverages_spec
    ]

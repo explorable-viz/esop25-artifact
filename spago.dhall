@@ -5,6 +5,7 @@ You can edit this file as you like.
 { name = ""
 , dependencies =
   [ "aff"
+  , "aff-promise"
   , "affjax"
   , "affjax-web"
   , "arrays"
@@ -18,6 +19,7 @@ You can edit this file as you like.
   , "exists"
   , "filterable"
   , "foldable-traversable"
+  , "foreign"
   , "foreign-object"
   , "functors"
   , "graphs"
@@ -37,6 +39,7 @@ You can edit this file as you like.
   , "st"
   , "strings"
   , "tailrec"
+  , "toppokki"
   , "transformers"
   , "tuples"
   , "unfoldable"

@@ -1,21 +1,29 @@
-module App.View.BarChart where
+module App.View.BarChart
+   ( Bar(..)
+   , BarChart(..)
+   , StackedBar(..)
+   ) where
 
 import Prelude hiding (absurd)
 
-import App.Util (class Reflect, SelState(..), Selectable, ViewSelector, 𝕊(..), colorShade, from, get_intOrNumber, record)
-import App.Util.Selector (barChart, barSegment)
-import App.View.Util (class Drawable, Renderer, selListener, uiHelpers)
+import App.Util (class Reflect, SelState, Selectable, 𝕊(..), colorShade, from, getPersistent, getTransient, get_intOrNumber, record)
+import App.Util.Selector (ViewSelSetter, barChart, barSegment)
+import App.View.Util (class Drawable, class Drawable2, Renderer, selListener, uiHelpers)
+import App.View.Util.D3 (ElementType(..), create)
+import App.View.Util.D3 as D3
 import Bind ((↦))
 import Data.Int (floor, pow, toNumber)
 import Data.Number (log)
 import Data.Tuple (snd)
-import DataType (f_bars, f_caption, f_data, f_x, f_y, f_z)
+import DataType (f_bars, f_caption, f_stackedBars, f_x, f_y, f_z)
 import Dict (Dict)
+import Effect (Effect)
 import Foreign.Object (Object, fromFoldable)
 import Primitive (string, unpack)
 import Util ((!))
 import Util.Map (get)
 import Val (Val)
+import Web.Event.EventTarget (EventListener)
 
 newtype BarChart = BarChart
    { caption :: Selectable String
@@ -37,25 +45,70 @@ type BarChartHelpers =
    , tickEvery :: Int -> Int
    }
 
-foreign import drawBarChart :: BarChartHelpers -> Renderer BarChart Unit
+foreign import drawBarChart :: BarChartHelpers -> Renderer BarChart
 
-drawBarChart' :: Renderer BarChart Unit
-drawBarChart' = drawBarChart
+barChartHelpers :: BarChartHelpers
+barChartHelpers =
    { bar_attrs
    , tickEvery
    }
-
-instance Drawable BarChart Unit where
-   draw divId suffix redraw view viewState =
-      drawBarChart' { uiHelpers, divId, suffix, view, viewState } =<< selListener redraw barChartSelector
+   where
+   bar_attrs :: (Int -> String) -> BarChart -> BarSegmentCoordinate -> Object String
+   bar_attrs indexCol (BarChart { stackedBars }) { i, j } =
+      fromFoldable
+         [ "fill" ↦ case persistent of
+              None -> col
+              Secondary -> "url(#diagonalHatch-" <> show j <> ")"
+              Primary -> colorShade col (-40)
+         , "stroke-width" ↦ "1"
+         , "stroke-dasharray" ↦ case transient of
+              None -> "none"
+              Secondary -> "0.5 1" -- "1 2"
+              Primary -> "0.5 1" -- "2 2"
+         , "stroke-linecap" ↦ "round"
+         , "stroke" ↦
+              if persistent /= None || transient /= None then colorShade col (-70)
+              else col
+         ]
       where
-      barChartSelector :: ViewSelector BarSegmentCoordinate
-      barChartSelector { i, j } = barSegment i j >>> barChart
+      StackedBar { bars } = stackedBars ! i
+      Bar { z } = bars ! j
+      t = snd z
+      persistent = getPersistent t
+      transient = getTransient t
+      col = indexCol j
+
+   tickEvery :: Int -> Int
+   tickEvery n =
+      if n <= 2 * pow 10 m then 2 * pow 10 (m - 1)
+      else pow 10 m
+      where
+      m = floor (log (toNumber n) / log 10.0)
+
+setSelState2 :: BarChart -> EventListener -> D3.Selection -> Effect Unit
+setSelState2 _ _ _ =
+   pure unit
+
+createRootElement2 :: BarChart -> D3.Selection -> String -> Effect D3.Selection
+createRootElement2 _ div _ = do
+   rootElement <- div # create SVG []
+   pure rootElement
+
+instance Drawable2 BarChart where
+   createRootElement = createRootElement2
+   setSelState = setSelState2
+
+instance Drawable BarChart where
+   draw rSpec figVal _ redraw =
+      drawBarChart barChartHelpers uiHelpers rSpec =<< selListener figVal redraw barSegment'
+      where
+      barSegment' :: ViewSelSetter BarSegmentCoordinate
+      barSegment' { i, j } = barSegment i j >>> barChart
 
 instance Reflect (Dict (Val (SelState 𝕊))) BarChart where
    from r = BarChart
       { caption: unpack string (get f_caption r)
-      , stackedBars: record from <$> from (get f_data r)
+      , stackedBars: record from <$> from (get f_stackedBars r)
       }
 
 instance Reflect (Dict (Val (SelState 𝕊))) StackedBar where
@@ -72,33 +125,3 @@ instance Reflect (Dict (Val (SelState 𝕊))) Bar where
 
 -- see data binding in .js
 type BarSegmentCoordinate = { i :: Int, j :: Int }
-
-bar_attrs :: (Int -> String) -> BarChart -> BarSegmentCoordinate -> Object String
-bar_attrs indexCol (BarChart { stackedBars }) { i, j } =
-   fromFoldable
-      [ "fill" ↦ case persistent of
-           None -> col
-           Secondary -> "url(#diagonalHatch-" <> show j <> ")"
-           Primary -> colorShade col (-40)
-      , "stroke-width" ↦ "1.5"
-      , "stroke-dasharray" ↦ case transient of
-           None -> "none"
-           Secondary -> "1 2"
-           Primary -> "2 2"
-      , "stroke-linecap" ↦ "round"
-      , "stroke" ↦
-           if persistent /= None || transient /= None then colorShade col (-70)
-           else col
-      ]
-   where
-   StackedBar { bars } = stackedBars ! i
-   Bar { z } = bars ! j
-   SelState { persistent, transient } = snd z
-   col = indexCol j
-
-tickEvery :: Int -> Int
-tickEvery n =
-   if n <= 2 * pow 10 m then 2 * pow 10 (m - 1)
-   else pow 10 m
-   where
-   m = floor (log (toNumber n) / log 10.0)

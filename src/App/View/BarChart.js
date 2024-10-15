@@ -9,22 +9,6 @@ d3.selection.prototype.attrs = function(m) {
    return this
 }
 
-function setSelState (
-   { bar_attrs },
-   indexCol,
-   rootElement,
-   chart,
-   listener
-) {
-   rootElement.selectAll('.bar').each(function (bar) {
-      d3.select(this) // won't work inside arrow function :/
-         .attrs(bar_attrs(indexCol)(chart)(bar))
-         .on('mousedown', e => { listener(e) })
-         .on('mouseenter', e => { listener(e) })
-         .on('mouseleave', e => { listener(e) })
-   })
-}
-
 // CSS background-image + gradient fill doesn't work with SVG
 // SVG patterns don't support per-usage styling so generate one per colour
 // Masks eliminate dependency on specific colours but seem to clip the stroke a bit
@@ -32,8 +16,8 @@ function addHatchPattern (rootElement, j, col_j) {
    pattern = rootElement.append('pattern')
       .attr('id', 'diagonalHatch-' + j)
       .attr('patternUnits', 'userSpaceOnUse')
-      .attr('width', 3.5)
-      .attr('height', 3.5)
+      .attr('width', 2)
+      .attr('height', 2)
       .attr('patternTransform', 'rotate(45)')
 
    pattern.append('rect')
@@ -50,10 +34,27 @@ function addHatchPattern (rootElement, j, col_j) {
       .attr('stroke-width', "1")
 }
 
+
+function setSelState (
+   { bar_attrs },
+   indexCol,
+   rootElement,
+   chart,
+   listener
+) {
+   rootElement.selectAll('.bar').each(function (bar) {
+      d3.select(this) // won't work inside arrow function :/
+         .attrs(bar_attrs(indexCol)(chart)(bar))
+         .on('mousedown', e => { listener(e) })
+         .on('mouseenter', e => { listener(e) })
+         .on('mouseleave', e => { listener(e) })
+   })
+}
+
 function drawBarChart_ (
    barChartHelpers,
+   uiHelpers,
    {
-      uiHelpers,
       divId,
       suffix,
       view: {
@@ -67,9 +68,9 @@ function drawBarChart_ (
       const { val } = uiHelpers
       const { tickEvery } = barChartHelpers
       const childId = divId + '-' + suffix
-      const margin = {top: 15, right: 75, bottom: 25, left: 40},
+      const margin = {top: 3, right: 75, bottom: 20, left: 40},
             width = 275 - margin.left - margin.right,
-            height = 185 - margin.top - margin.bottom
+            height = 150 - margin.top - margin.bottom
       const div = d3.select('#' + divId)
       if (div.empty()) {
          console.error('Unable to insert figure: no div found with id ' + divId)
@@ -83,12 +84,10 @@ function drawBarChart_ (
          rootElement = div
             .append('svg')
                .attr('width', width + margin.left + margin.right)
-               .attr('height', height + margin.top + margin.bottom)
+               .attr('height', height + margin.top + margin.bottom + margin.bottom) // hackery from hell
                .attr('id', childId)
-
-         rootElement
-            .append('g')
-               .attr('transform', `translate(${margin.left}, ${margin.top})`)
+               .append('g')
+                  .attr('transform', `translate(${margin.left}, ${margin.top})`)
 
          // x-axis
          const x = d3.scaleBand()
@@ -198,4 +197,4 @@ function drawBarChart_ (
    }
 }
 
-export var drawBarChart = x1 => x2 => x3 => drawBarChart_(x1, x2, x3)
+export var drawBarChart = x1 => x2 => x3 => x4 => drawBarChart_(x1, x2, x3, x4)
